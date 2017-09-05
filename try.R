@@ -16,7 +16,7 @@ downloadUrls = sapply(downloadUrls,function(xx) str_replace_all(xx,"'[)]",""))
 names(downloadUrls) = NULL
 
 downloadUrls = downloadUrls[grep("DataInformation.doc",downloadUrls,invert = T)]
-#print(downloadUrls) #¥H¤W³£OK
+#print(downloadUrls) #Â¥HÂ¤WÂ³Â£OK
 
 downloadFilenames = sapply(downloadUrls, function(url){
   xx = unlist(strsplit(url,"/"))

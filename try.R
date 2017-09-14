@@ -5,31 +5,33 @@ library(httr)
 library(rvest)
 library(stringr)
 library(xts)
+library(dplyr)
 
 res = GET(TAIFEX_F_TbyT_ZIPs_URL)
 #print(res)
 downloadUrls = html(res) %>% 
   html_nodes(".table_c input") %>% 
   html_attr("onclick")
-print(downloadUrls)
+#print(downloadUrls)
 downloadUrls = sapply(downloadUrls,function(xx) str_replace_all(xx,"window.open[(]'../..","http://www.taifex.com.tw"))
-print(downloadUrls)
+#print(downloadUrls)
 downloadUrls = sapply(downloadUrls,function(xx) str_replace_all(xx,"'[)]",""))
-print(downloadUrls)
-print(names(downloadUrls))
+#print(downloadUrls)
+#print(names(downloadUrls))
 names(downloadUrls) = NULL
 
 downloadUrls = downloadUrls[grep("DataInformation.doc",downloadUrls,invert = T)]
 downloadUrls = downloadUrls[grep("CSV",downloadUrls,invert = T)]
 print(downloadUrls) #下載的檔案網址與名稱
-
+setwd('D://R/prog/taifex-download')
 dir1 <- dir(path = "./TAIFEX/zip", pattern = NULL, 
             all.files = FALSE,full.names = FALSE, 
             recursive = FALSE,ignore.case = FALSE, 
             include.dirs = FALSE, no.. = FALSE)
-downloadUrls = downloadUrls[grep(dir1[4],downloadUrls,invert = T)]
-
-downloadUrls = apply(dir1,1,downloadUrls[grep(dir1[],downloadUrls,invert = T)])
+for(i in 1:length(dir1)){
+  downloadUrls = downloadUrls[grep(dir1[i],downloadUrls,invert = T)]
+  print(i)
+}
 
 downloadFilenames = sapply(downloadUrls, function(url){
   xx = unlist(strsplit(url,"/"))
@@ -44,7 +46,6 @@ dnFilesDF = data.frame(url=downloadUrls,dest=downloadFilenames,stringsAsFactors 
 #print(dnFilesDF)
 
 DownloadPATH = "TAIFEX"
-setwd('D://R/prog/taifex-download')
 dnFilesDF$dest = sprintf("./TAIFEX/zip/%s",dnFilesDF$dest)
 #View(dnFilesDF)
 
@@ -58,36 +59,38 @@ rptFiles = apply(dnFilesDF,1,function(xx){
 print(rptFiles)
 
 sapply(rptFiles,function(rptF){
-  TaifexFutureTByT_df = read.csv(rptF, na.strings = "-",stringsAsFactors=FALSE)  
+  AA = read.csv(rptF, na.strings = "-",stringsAsFactors=FALSE)
+#  print(AA$Product.Code)
+  print("triger 1")
+#  print(filter(AA , AA$Product.Code == "MTX"))
+  TaifexFutureTByT_df <- filter(AA , AA$Product.Code >= "MTX    ")
+  print("triger 1.5")
+#  print(TaifexFutureTByT_df)
   TaifexFutureTByT_df$Time.of.Trades = sapply(TaifexFutureTByT_df$Time.of.Trades,function(time){
     ifelse(str_length(time) < 6,sprintf("0%s",time),time)
   })
-  
+  print("triger 1.6")
+#  print(TaifexFutureTByT_df)
+
+#  print(TaifexFutureTByT_df)
   TaifexFutureTByT_df$Time = apply(TaifexFutureTByT_df,1,function(row){
     str_replace_all(paste(row[1],row[4],collapse = "")," ","")
   })
-  
-  TaifexFutureTByT_df$Time = strptime(TaifexFutureTByT_df$Time,"%Y%m%d%H%M%S",tz = "CST")
-  
+  print("triger 2")
+  TaifexFutureTByT_df$Time = strptime(TaifexFutureTByT_df$Time,"%Y%m%d%H%M%S",tz = "Asia/Taipei")
+#  print(TaifexFutureTByT_df$Time)
+  print("triger 3")
+
   rowData = cbind(time = TaifexFutureTByT_df$Time,
                   price = TaifexFutureTByT_df$Trade.Price, 
-                  pcode = str_replace_all(TaifexFutureTByT_df$Product.Code," ",""),
-                  exMW = str_replace_all(TaifexFutureTByT_df$Contract.Month.Week.," ",""),
-                  volume=TaifexFutureTByT_df$Volume.Buy.Sell./2,
-                  pNM = TaifexFutureTByT_df$Price.for.Nearer.Delivery.Month.Contract,
-                  pFM = TaifexFutureTByT_df$Price.for.Nearer.Delivery.Month.Contract,
-                  OCA = TaifexFutureTByT_df$Opening.Call.Auction)
+                  pcode = TaifexFutureTByT_df$Product.Code,
+                  exMW = TaifexFutureTByT_df$Contract.Month.Week.,
+                  volume=TaifexFutureTByT_df$Volume.Buy.Sell./2)
+
+  print(rowData)
+  print(Sys.timezone(location = TRUE))
+#  Xt = xts(rowDataX,TaifexFutureTByT_df$Time)
   
-  rowDataX = cbind(price = TaifexFutureTByT_df$Trade.Price, 
-                   pcode = str_replace_all(TaifexFutureTByT_df$Product.Code," ",""),
-                   exMW = str_replace_all(TaifexFutureTByT_df$Contract.Month.Week.," ",""),
-                   volume=TaifexFutureTByT_df$Volume.Buy.Sell./2,
-                   pNM = TaifexFutureTByT_df$Price.for.Nearer.Delivery.Month.Contract,
-                   pFM = TaifexFutureTByT_df$Price.for.Nearer.Delivery.Month.Contract,
-                   OCA = TaifexFutureTByT_df$Opening.Call.Auction)
-  
-  #Xt = xts(rowDataX,TaifexFutureTByT_df$Time)
-  
-  #dest = str_replace_all(rptF,"rpt","RData")
-  #save(TaifexFutureTByT_df, rowData, Xt ,file = dest)
+#  dest = str_replace_all(rptF,"rpt","RData")
+#  save(TaifexFutureTByT_df, rowData, Xt ,file = dest)
 })

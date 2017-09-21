@@ -52,19 +52,19 @@ print(rptFiles)
 
 sapply(rptFiles,function(rptF){
   AA = read.csv(rptF, na.strings = "-",stringsAsFactors=FALSE)
-  print("triger 1")
+  print("trace 1")
   TaifexFutureTByT_df <- filter(AA , AA[2] >= "MTX" & AA[3] >= "201710")
-  print("triger 1.5")
+  print("trace 1.5")
   TaifexFutureTByT_df$Time.of.Trades = sapply(TaifexFutureTByT_df$Time.of.Trades,function(time){
     ifelse(str_length(time) < 6,sprintf("0%s",time),time)
   })
-  print("triger 1.6")
+  print("trace 1.6")
   TaifexFutureTByT_df$Time = apply(TaifexFutureTByT_df,1,function(row){
     str_replace_all(paste(row[1],row[4],collapse = "")," ","")
   })
-  print("triger 2")
+  print("trace 2")
   TaifexFutureTByT_df$Time = strptime(TaifexFutureTByT_df$Time,"%Y%m%d%H%M%S")
-  print("triger 3")
+  print("trace 3")
 
   rowData1 <- cbind(
     price = TaifexFutureTByT_df$Trade.Price, 
@@ -72,12 +72,12 @@ sapply(rptFiles,function(rptF){
     #exMW = TaifexFutureTByT_df$Contract.Month.Week.,
     volume=TaifexFutureTByT_df$Volume.Buy.Sell./2
     )
-  print("triger 3.1")
+  print("trace 3.1")
   print(rowData1)
  
 #  rowData <- xts(rowData1,TaifexFutureTByT_df$Time)
   rowData <- na.omit(xts(rowData1,TaifexFutureTByT_df$Time))  
-  print("triger 3.2")
+  print("trace 3.2")
 
   print(rowData[1:10])
 
@@ -88,11 +88,11 @@ sapply(rptFiles,function(rptF){
                          c( first(ticks),max(ticks), min(ticks),
                             last(ticks), sum(xx$volume))
                        })
-  print("triger 3.3")
+  print("trace 3.3")
   colnames(bars) <- c("Open","High","Low","Close","Volume")
   align.time(bars,60)
   chartSeries(bars)
-  print("triger 3.4")
+  print("trace 3.4")
   
   
 #  Xt = xts(rowDataX,TaifexFutureTByT_df$Time)

@@ -6,18 +6,14 @@ library(rvest)
 library(stringr)
 library(xts)
 library(dplyr)
+library(quantmod)
 
 res = GET(TAIFEX_F_TbyT_ZIPs_URL)
-#print(res)
 downloadUrls = html(res) %>% 
   html_nodes(".table_c input") %>% 
   html_attr("onclick")
-#print(downloadUrls)
 downloadUrls = sapply(downloadUrls,function(xx) str_replace_all(xx,"window.open[(]'../..","http://www.taifex.com.tw"))
-#print(downloadUrls)
 downloadUrls = sapply(downloadUrls,function(xx) str_replace_all(xx,"'[)]",""))
-#print(downloadUrls)
-#print(names(downloadUrls))
 names(downloadUrls) = NULL
 
 downloadUrls = downloadUrls[grep("DataInformation.doc",downloadUrls,invert = T)]
@@ -42,13 +38,9 @@ print(names(downloadFilenames))
 names(downloadFilenames) = NULL
 
 dnFilesDF = data.frame(url=downloadUrls,dest=downloadFilenames,stringsAsFactors = F)
-#View(downloadUrls)
-#print(dnFilesDF)
 
 DownloadPATH = "TAIFEX"
 dnFilesDF$dest = sprintf("./TAIFEX/zip/%s",dnFilesDF$dest)
-#View(dnFilesDF)
-
 outPath <- "./TAIFEX/rpt"
 
 rptFiles = apply(dnFilesDF,1,function(xx){
@@ -60,35 +52,49 @@ print(rptFiles)
 
 sapply(rptFiles,function(rptF){
   AA = read.csv(rptF, na.strings = "-",stringsAsFactors=FALSE)
-#  print(AA$Product.Code)
   print("triger 1")
-#  print(filter(AA , AA$Product.Code == "MTX"))
-  TaifexFutureTByT_df <- filter(AA , AA$Product.Code >= "MTX    ")
+  TaifexFutureTByT_df <- filter(AA , AA[2] >= "MTX" & AA[3] >= "201710")
   print("triger 1.5")
-#  print(TaifexFutureTByT_df)
   TaifexFutureTByT_df$Time.of.Trades = sapply(TaifexFutureTByT_df$Time.of.Trades,function(time){
     ifelse(str_length(time) < 6,sprintf("0%s",time),time)
   })
   print("triger 1.6")
-#  print(TaifexFutureTByT_df)
-
-#  print(TaifexFutureTByT_df)
   TaifexFutureTByT_df$Time = apply(TaifexFutureTByT_df,1,function(row){
     str_replace_all(paste(row[1],row[4],collapse = "")," ","")
   })
   print("triger 2")
-  TaifexFutureTByT_df$Time = strptime(TaifexFutureTByT_df$Time,"%Y%m%d%H%M%S",tz = "Asia/Taipei")
-#  print(TaifexFutureTByT_df$Time)
+  TaifexFutureTByT_df$Time = strptime(TaifexFutureTByT_df$Time,"%Y%m%d%H%M%S")
   print("triger 3")
 
-  rowData = cbind(time = TaifexFutureTByT_df$Time,
-                  price = TaifexFutureTByT_df$Trade.Price, 
-                  pcode = TaifexFutureTByT_df$Product.Code,
-                  exMW = TaifexFutureTByT_df$Contract.Month.Week.,
-                  volume=TaifexFutureTByT_df$Volume.Buy.Sell./2)
+  rowData1 <- cbind(
+    price = TaifexFutureTByT_df$Trade.Price, 
+    #pcode = TaifexFutureTByT_df$Product.Code,
+    #exMW = TaifexFutureTByT_df$Contract.Month.Week.,
+    volume=TaifexFutureTByT_df$Volume.Buy.Sell./2
+    )
+  print("triger 3.1")
+  print(rowData1)
+ 
+#  rowData <- xts(rowData1,TaifexFutureTByT_df$Time)
+  rowData <- na.omit(xts(rowData1,TaifexFutureTByT_df$Time))  
+  print("triger 3.2")
 
-  print(rowData)
-  print(Sys.timezone(location = TRUE))
+  print(rowData[1:10])
+
+  bars <- period.apply(rowData,
+                       endpoints(rowData,"secs",60),
+                       function(xx){
+                         ticks=coredata(xx$price)
+                         c( first(ticks),max(ticks), min(ticks),
+                            last(ticks), sum(xx$volume))
+                       })
+  print("triger 3.3")
+  colnames(bars) <- c("Open","High","Low","Close","Volume")
+  align.time(bars,60)
+  chartSeries(bars)
+  print("triger 3.4")
+  
+  
 #  Xt = xts(rowDataX,TaifexFutureTByT_df$Time)
   
 #  dest = str_replace_all(rptF,"rpt","RData")
